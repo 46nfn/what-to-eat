@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍜</text></svg>" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#FFFAF5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="这顿吃什么" />
+    <meta name="description" content="美食记录&决策轻社区" />
+    <link rel="manifest" href="./manifest.json" />
+    <title>这顿吃什么 🍜</title>
+    <script type="module" crossorigin src="./assets/index-Bay2N8xo.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Df4aksz0.css">
+  </head>
+  <body>
+    <!-- 如果 Vue 没挂载，3 秒后显示提示 -->
+    <div id="app">
+      <div id="loading-hint" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#5D4E37;background:#FFFAF5;">
+        <div style="text-align:center;padding:40px;">
+          <div style="font-size:64px;margin-bottom:16px;">🍜</div>
+          <h2 style="font-weight:700;margin-bottom:8px;">这顿吃什么</h2>
+          <p style="margin-bottom:24px;color:#9B8B7A;">加载中，请稍候...</p>
+          <p style="font-size:13px;color:#B8A88E;">如果长时间无响应，请确保通过 <code style="background:#F0E8DC;padding:2px 8px;border-radius:4px;">npm run dev</code> 启动</p>
+        </div>
+      </div>
+    </div>
+    <script>
+      // 如果 4 秒后 #app 还是只有 loading-hint，说明 Vue 没挂载
+      setTimeout(() => {
+        const app = document.getElementById('app')
+        if (app && app.querySelector('#loading-hint')) {
+          app.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#FFFAF5;color:#5D4E37;"><div style="text-align:center;padding:40px;"><div style="font-size:64px;">⚠️</div><h2>应用未能加载</h2><p style="color:#9B8B7A;margin:16px 0;">请通过命令行启动项目：</p><pre style="background:#F5F0E8;padding:16px;border-radius:12px;text-align:left;font-size:14px;display:inline-block;">cd E:\\aiaiai\\这顿吃什么\nnpm run dev</pre><p style="font-size:13px;color:#B8A88E;margin-top:16px;">然后在浏览器打开终端显示的地址（如 http://localhost:3000）</p></div></div>'
+        }
+      }, 4000)
+    </script>
+    <noscript>
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#FFFAF5;color:#5D4E37;">
+        <div style="text-align:center;padding:40px;">
+          <div style="font-size:64px;">⚠️</div>
+          <h2>请启用 JavaScript</h2>
+          <p style="color:#9B8B7A;">此应用需要 JavaScript 才能运行</p>
+        </div>
+      </div>
+    </noscript>
+  </body>
+</html>

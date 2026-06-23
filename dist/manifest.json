@@ -1,0 +1,11 @@
+{
+  "name": "这顿吃什么",
+  "short_name": "这顿吃什么",
+  "description": "美食记录 & 决策轻社区",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFAF5",
+  "theme_color": "#F5D5A0",
+  "icons": [{ "src": "/vite.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
