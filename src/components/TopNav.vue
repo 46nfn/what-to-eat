@@ -1,0 +1,56 @@
+<template>
+  <nav class="sticky top-0 z-50 glass border-b border-warm-100 dark:border-warm-700">
+    <div class="max-w-4xl mx-auto flex items-center justify-between px-4 h-14">
+      <!-- Logo -->
+      <router-link to="/draw" class="flex items-center gap-1.5 flex-shrink-0 no-underline">
+        <span class="text-xl">🍜</span>
+        <span class="font-bold text-base text-warm-700 dark:text-warm-100 hidden sm:inline">这顿吃什么</span>
+      </router-link>
+
+      <!-- 桌面导航 -->
+      <div class="hidden sm:flex items-center gap-1">
+        <router-link v-for="item in navItems" :key="item.to" :to="item.to"
+          class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 no-underline"
+          :class="isActive(item.to)
+            ? 'bg-wheat-200 text-wheat-700 dark:bg-wheat-800 dark:text-wheat-300'
+            : 'text-warm-500 hover:text-warm-700 hover:bg-warm-50 dark:hover:bg-warm-800 dark:hover:text-warm-300'">
+          {{ item.icon }} {{ item.label }}
+        </router-link>
+      </div>
+
+      <!-- 移动端导航 -->
+      <div class="flex sm:hidden items-center gap-0.5 overflow-x-auto scrollbar-none">
+        <router-link v-for="item in navItems" :key="item.to" :to="item.to"
+          class="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 no-underline flex-shrink-0"
+          :class="isActive(item.to)
+            ? 'bg-wheat-200 text-wheat-700 dark:bg-wheat-800 dark:text-wheat-300'
+            : 'text-warm-500'">
+          {{ item.icon }} {{ item.short }}
+        </router-link>
+      </div>
+
+      <!-- 个人中心入口 -->
+      <router-link to="/profile"
+        class="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex-shrink-0 no-underline"
+        :class="isActive('/profile')
+          ? 'bg-wheat-200 text-wheat-700 dark:bg-wheat-800 dark:text-wheat-300'
+          : 'text-warm-500 hover:text-warm-700 hover:bg-warm-50 dark:hover:bg-warm-800 dark:hover:text-warm-300'">
+        👤 <span class="hidden sm:inline">我的</span>
+      </router-link>
+    </div>
+  </nav>
+</template>
+
+<script setup>
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const isActive = (path) => route.path === path || (path === '/draw' && route.path === '/')
+
+const navItems = [
+  { to: '/draw', icon: '🎰', label: '听天意', short: '抽签' },
+  { to: '/ai-chat', icon: '🤖', label: '天帮我选', short: 'AI推荐' },
+  { to: '/diary', icon: '📖', label: '美食日记', short: '日记' },
+  { to: '/community', icon: '🌍', label: '社区', short: '社区' },
+]
+</script>
