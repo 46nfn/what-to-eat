@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 /** 懒加载所有独立分页 */
 const DrawPage = () => import('@/views/DrawPage.vue')
@@ -20,4 +20,4 @@ const routes = [
   { path: '/profile', name: 'profile', component: ProfilePage },
 ]
 
-export default createRouter({ history: createWebHashHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
+export default createRouter({ history: createWebHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
