@@ -113,18 +113,26 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRecords } from '@/stores/useRecords.js'
+import { useAuth } from '@/stores/useAuth.js'
 import { fmtDate, dateGroup, mealEmoji } from '@/utils/helpers.js'
 import Toast from '@/components/Toast.vue'
 
 const router = useRouter()
-const { state, remove } = useRecords()
+const { state, remove, loadFromServer } = useRecords()
+const { isLoggedIn } = useAuth()
 const toastRef = ref(null)
 const curView = ref('timeline')
 const search = ref('')
 const activeFilter = ref('all')
+
+onMounted(async () => {
+  if (isLoggedIn.value) {
+    await loadFromServer()
+  }
+})
 
 const views = [
   { key: 'timeline', icon: '📋', label: '时间线' },

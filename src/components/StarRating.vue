@@ -1,13 +1,13 @@
 <template>
   <div class="flex items-center gap-0.5 cursor-pointer select-none">
     <span v-for="i in 5" :key="i" class="text-2xl transition-transform duration-200 hover:scale-110"
-      :class="{ 'scale-115': i <= hover || (hover === 0 && i <= model) }"
+      :class="{ 'scale-115': i <= hover || (hover === 0 && i <= modelValue) }"
       @click="$emit('update:modelValue', i)"
       @mouseenter="hover = i"
       @mouseleave="hover = 0">
-      {{ i <= (hover || model) ? '⭐' : '☆' }}
+      {{ i <= (hover || modelValue) ? '⭐' : '☆' }}
     </span>
-    <span class="ml-2 text-sm text-warm-500">{{ model > 0 ? model + '分' : '点击评分' }}</span>
+    <span class="ml-2 text-sm text-warm-500">{{ modelValue > 0 ? modelValue + '分' : '点击评分' }}</span>
   </div>
 </template>
 

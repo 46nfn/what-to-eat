@@ -125,14 +125,17 @@
       </div>
 
       <!-- 提交 -->
-      <button class="btn-main w-full py-3 text-base" @click="onSubmit">{{ editId ? '💾 保存修改' : '📝 保存记录' }}</button>
+      <button class="btn-main w-full py-3 text-base" :disabled="submitting" @click="onSubmit">
+        <span v-if="submitting" class="inline-block animate-spin mr-1">⏳</span>
+        {{ submitting ? '保存中...' : (editId ? '💾 保存修改' : '📝 保存记录') }}
+      </button>
     </div>
     <Toast ref="toastRef" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecords } from '@/stores/useRecords.js'
 import { getMealType, compressImage, getPosition, autoTagsFromName } from '@/utils/helpers.js'
@@ -146,6 +149,7 @@ const toastRef = ref(null)
 const tagInput = ref('')
 const locating = ref(false)
 const locStatus = ref('')
+const submitting = ref(false)
 
 const now = new Date()
 const defaultMeal = getMealType()
@@ -178,17 +182,26 @@ const addTag = () => {
   if (t && !form.tags.includes(t)) { form.tags.push(t); tagInput.value = '' }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (editId.value) {
-    const r = getById(editId.value)
-    if (r) Object.assign(form, {
-      name: r.name, photos: r.photos || [], video: r.video, note: r.note,
-      mealTime: new Date(r.mealTime).toISOString().slice(0, 16), mealType: r.mealType,
-      rating: r.rating, price: r.price,
-      location: r.location || { lat: null, lng: null, address: '', name: '' },
-      tags: r.tags || [], aiTags: r.aiTags || [],
-      isPublic: r.isPublic, isWarning: r.isWarning, isFavorite: r.isFavorite,
-    })
+    const r = await getById(editId.value)
+    if (r) {
+      // 支持 snake_case (API) 和 camelCase (localStorage)
+      const mealTimeStr = (r.mealTime || r.meal_time)
+        ? new Date(r.mealTime || r.meal_time).toISOString().slice(0, 16)
+        : now.toISOString().slice(0, 16)
+      Object.assign(form, {
+        name: r.name, photos: r.photos || [], video: r.video, note: r.note,
+        mealTime: mealTimeStr,
+        mealType: r.mealType || r.meal_type || 'lunch',
+        rating: r.rating || 0, price: r.price || 0,
+        location: r.location || { lat: null, lng: null, address: '', name: '' },
+        tags: r.tags || [], aiTags: r.aiTags || r.ai_tags || [],
+        isPublic: r.isPublic !== undefined ? r.isPublic : (r.is_public !== undefined ? !!r.is_public : true),
+        isWarning: r.isWarning !== undefined ? r.isWarning : (r.is_warning !== undefined ? !!r.is_warning : false),
+        isFavorite: r.isFavorite !== undefined ? r.isFavorite : (r.is_favorite !== undefined ? !!r.is_favorite : false),
+      })
+    }
   }
 })
 
@@ -223,18 +236,43 @@ const getLocation = async () => {
   locating.value = false
 }
 
-const onSubmit = () => {
+const onSubmit = async () => {
   if (!form.name.trim()) return toastRef.value?.show('请输入美食名称', 'warn')
   const allTags = [...new Set([...autoTags.value, ...form.tags])]
-  const data = { ...form, name: form.name.trim(), tags: allTags }
-
-  if (editId.value) {
-    updateRecord(editId.value, data)
-    toastRef.value?.show('记录已更新！', 'success')
-  } else {
-    add(data)
-    toastRef.value?.show('记录保存成功！🎉', 'success')
+  // ⚠️ 不能用 { ...form } 展开 Vue reactive proxy
+  // —— checkbox v-model 在部分浏览器可能产出字符串 "on" 而非 true/false
+  // 手动构造 data 并对布尔字段做显式 !! 转换，确保发往后端的是真布尔值
+  const data = {
+    name: form.name.trim(),
+    photos: form.photos,
+    video: form.video,
+    note: form.note,
+    mealTime: form.mealTime,
+    mealType: form.mealType,
+    rating: form.rating,
+    price: form.price,
+    location: { ...form.location },
+    tags: allTags,
+    aiTags: form.aiTags,
+    isPublic: !!form.isPublic,
+    isFavorite: !!form.isFavorite,
+    isWarning: !!form.isWarning,
   }
-  setTimeout(() => router.push('/diary'), 600)
+
+  submitting.value = true
+  try {
+    if (editId.value) {
+      await updateRecord(editId.value, data)
+      toastRef.value?.show('记录已更新！', 'success')
+    } else {
+      await add(data)
+      toastRef.value?.show('记录保存成功！🎉', 'success')
+    }
+    setTimeout(() => router.push('/diary'), 600)
+  } catch (err) {
+    toastRef.value?.show(err.message || '保存失败', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>

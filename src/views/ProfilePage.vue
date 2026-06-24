@@ -1,14 +1,18 @@
 <template>
   <div class="max-w-lg mx-auto px-4 pt-4 pb-24 animate-fade-in-up">
-    <h1 class="text-xl font-bold text-warm-700 dark:text-warm-100 mb-4">👤 个人中心</h1>
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold text-warm-700 dark:text-warm-100">👤 个人中心</h1>
+      <button v-if="auth.isLoggedIn" class="text-xs text-red-400 hover:text-red-500 font-medium" @click="onLogout">退出登录</button>
+    </div>
 
     <!-- 个人卡片 -->
     <div class="card-box mb-4">
       <div class="flex items-center gap-4">
-        <div class="w-16 h-16 rounded-full bg-wheat-100 dark:bg-wheat-800 flex items-center justify-center text-3xl flex-shrink-0">{{ profile.avatar }}</div>
+        <div class="w-16 h-16 rounded-full bg-wheat-100 dark:bg-wheat-800 flex items-center justify-center text-3xl flex-shrink-0">{{ auth.state.user?.avatar || profile.avatar }}</div>
         <div class="flex-1 min-w-0">
-          <h2 class="font-bold text-lg truncate">{{ profile.nickname }}</h2>
-          <p class="text-xs text-warm-500 truncate">{{ profile.bio || '这个人很懒，什么都没写...' }}</p>
+          <h2 class="font-bold text-lg truncate">{{ auth.state.user?.nickname || profile.nickname }}</h2>
+          <p v-if="auth.isLoggedIn" class="text-xs text-warm-400 truncate">@{{ auth.state.user?.username }}</p>
+          <p class="text-xs text-warm-500 truncate">{{ auth.state.user?.bio || profile.bio || '这个人很懒，什么都没写...' }}</p>
         </div>
         <button class="btn-outline text-xs flex-shrink-0" @click="showEditProfile = true">✏️ 编辑</button>
       </div>
@@ -79,11 +83,13 @@
         <button class="btn-ghost text-sm w-full !text-red-400" @click="onClearAll">🗑️ 清除全部数据</button>
         <input ref="impFile" type="file" accept=".json" hidden @change="importData" />
       </div>
+      <p v-if="auth.isLoggedIn" class="text-[10px] text-warm-400 mt-3 text-center">☁️ 数据已同步到云端 · 登录账号: {{ auth.state.user?.username }}</p>
+      <p v-else class="text-[10px] text-warm-400 mt-3 text-center">💻 数据存储于浏览器本地 · 登录后同步到云端</p>
     </div>
 
     <!-- 关于 -->
     <div class="text-center text-xs text-warm-400 py-4">
-      <p>「这顿吃什么」v2.0</p><p>美食记录 & 决策轻社区 🌿</p><p>数据存储于浏览器本地 · 安全私密</p>
+      <p>「这顿吃什么」v2.0</p><p>美食记录 & 决策轻社区 🌿</p>
     </div>
 
     <!-- 编辑资料弹窗 -->
@@ -92,14 +98,14 @@
         <div>
           <label class="text-xs font-medium mb-1 block">选择头像</label>
           <div class="flex flex-wrap gap-1">
-            <span v-for="a in avatars" :key="a" class="text-2xl cursor-pointer p-1 rounded-lg" :class="profile.avatar === a ? 'bg-wheat-200' : ''" @click="profile.avatar = a">{{ a }}</span>
+            <span v-for="a in avatars" :key="a" class="text-2xl cursor-pointer p-1 rounded-lg" :class="(auth.state.user?.avatar || profile.avatar) === a ? 'bg-wheat-200' : ''" @click="updateAvatar(a)">{{ a }}</span>
           </div>
         </div>
         <div><label class="text-xs font-medium mb-1 block">昵称</label><input v-model="profile.nickname" class="input-box text-sm" /></div>
         <div><label class="text-xs font-medium mb-1 block">签名</label><input v-model="profile.bio" class="input-box text-sm" /></div>
         <div><label class="text-xs font-medium mb-1 block">DeepSeek API Key（可选）</label><input v-model="profile.aiApiKey" class="input-box text-sm" type="password" placeholder="sk-... 不填则用本地引擎" /></div>
       </div>
-      <template #footer><button class="btn-main flex-1" @click="saveProfile">保存</button></template>
+      <template #footer><button class="btn-main flex-1" @click="saveProfileHandler">保存</button></template>
     </Modal>
 
     <!-- 标签编辑弹窗 -->
@@ -131,7 +137,7 @@
     <Modal :show="listModal.show" :title="listModal.title" @close="listModal.show = false">
       <div v-if="!listModal.items.length" class="text-center py-8 text-sm text-warm-500">这里还没有内容</div>
       <div v-for="r in listModal.items" :key="r.id" class="flex items-center justify-between py-2 border-b border-warm-50 dark:border-warm-700 cursor-pointer" @click="$router.push(`/diary/${r.id}`); listModal.show = false">
-        <div><div class="text-sm font-medium">{{ r.name }}</div><div class="text-[10px] text-warm-500">{{ fmtDate(r.mealTime, 'date') }} · {{ r.mealType }}</div></div>
+        <div><div class="text-sm font-medium">{{ r.name }}</div><div class="text-[10px] text-warm-500">{{ fmtDate(r.mealTime || r.meal_time, 'date') }} · {{ r.mealType || r.meal_type }}</div></div>
         <img v-if="r.photos?.[0]" :src="r.photos[0]" class="w-10 h-10 rounded-lg object-cover" />
       </div>
     </Modal>
@@ -143,10 +149,10 @@
       <div v-else class="flex flex-col gap-2">
         <div v-for="(f,i) in profile.altFoods" :key="i" class="flex items-center justify-between px-3 py-2 bg-warm-50 dark:bg-warm-700 rounded-lg">
           <span class="text-sm">🍽️ {{ f }}</span>
-          <button class="text-red-400 text-sm" @click="profile.altFoods.splice(i,1); saveProfile()">🗑️</button>
+          <button class="text-red-400 text-sm" @click="profile.altFoods.splice(i,1); saveToServer()">🗑️</button>
         </div>
       </div>
-      <template #footer><button class="btn-main flex-1" @click="saveProfile(); showAltFoods = false">完成</button></template>
+      <template #footer><button class="btn-main flex-1" @click="saveProfileHandler(); showAltFoods = false">完成</button></template>
     </Modal>
 
     <Toast ref="toastRef" />
@@ -154,7 +160,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/stores/useAuth.js'
 import { useProfile } from '@/stores/useProfile.js'
 import { useRecords } from '@/stores/useRecords.js'
 import { exportAll, importAll, clearAll } from '@/utils/storage.js'
@@ -162,8 +170,11 @@ import Modal from '@/components/Modal.vue'
 import Toast from '@/components/Toast.vue'
 import { fmtDate } from '@/utils/helpers.js'
 
-const { state: profile } = useProfile()
-const { state: recordState } = useRecords()
+const router = useRouter()
+const auth = useAuth()
+const { state: profile, syncToServer } = useProfile()
+const { loadStats, loadFavorites, loadWarnings, state: recordState } = useRecords()
+
 const toastRef = ref(null)
 const showEditProfile = ref(false)
 const showAddrEditor = ref(false)
@@ -175,12 +186,25 @@ const impFile = ref(null)
 
 const avatars = ['🍜','🍛','🍣','🥘','🍕','🍔','🌮','🥗','🍲','🧑‍🍳','👩‍🍳','👨‍🍳','🐱','🐶','🐰','🦊']
 
-const stats = computed(() => ({
-  total: recordState.list.length,
-  public: recordState.list.filter(r => r.isPublic).length,
-  faves: recordState.list.filter(r => r.isFavorite).length,
-  warns: recordState.list.filter(r => r.isWarning).length,
-}))
+const stats = reactive({ total: 0, public: 0, faves: 0, warns: 0 })
+
+const updateStats = async () => {
+  if (auth.isLoggedIn) {
+    const s = await loadStats()
+    if (s) {
+      stats.total = s.total
+      stats.public = s.public
+      stats.faves = s.favorites
+      stats.warns = s.warnings
+      return
+    }
+  }
+  // 离线模式
+  stats.total = recordState.list.length
+  stats.public = recordState.list.filter(r => r.isPublic).length
+  stats.faves = recordState.list.filter(r => r.isFavorite).length
+  stats.warns = recordState.list.filter(r => r.isWarning).length
+}
 
 const tagEditor = reactive({ show: false, title: '', type: '', items: [], suggestions: [], input: '' })
 
@@ -214,7 +238,7 @@ const addCustomTag = () => {
 const saveTags = () => {
   const key = tagEditor.type === 'taste' ? 'tastePrefs' : 'allergies'
   profile[key] = [...tagEditor.items]
-  saveProfile()
+  saveProfileHandler()
   tagEditor.show = false
   toastRef.value?.show('已更新', 'success')
 }
@@ -222,7 +246,7 @@ const saveTags = () => {
 const setTheme = (t) => {
   theme.value = t
   profile.theme = t
-  saveProfile()
+  saveProfileHandler()
   applyTheme(t)
   toastRef.value?.show('主题已切换', 'success')
 }
@@ -230,7 +254,7 @@ const setTheme = (t) => {
 const setFont = (s) => {
   fontSize.value = s
   profile.fontSize = s
-  saveProfile()
+  saveProfileHandler()
   document.documentElement.dataset.font = s
   toastRef.value?.show('字体已调整', 'success')
 }
@@ -240,25 +264,40 @@ const applyTheme = (t) => {
   document.documentElement.classList.toggle('dark', isDark)
 }
 
-const saveProfile = () => {
-  const { state: s, update } = useProfile()
+const updateAvatar = (a) => {
+  profile.avatar = a
+  if (auth.state.user) auth.state.user.avatar = a
+}
+
+const saveProfileHandler = async () => {
+  const { state: s, update, syncToServer } = useProfile()
   update({ ...s })
+  await syncToServer()
+  if (auth.isLoggedIn) {
+    await auth.refreshUser()
+  }
   toastRef.value?.show('已保存', 'success')
 }
 
-const saveAddrs = () => {
+const saveToServer = async () => {
+  const { state: s, update } = useProfile()
+  update({ ...s })
+  await syncToServer()
+}
+
+const saveAddrs = async () => {
   profile.addresses = profile.addresses.filter(a => a.name || a.address)
-  saveProfile()
+  await saveProfileHandler()
   showAddrEditor.value = false
 }
 
-const addAlt = () => {
+const addAlt = async () => {
   const v = altInput.value.trim()
   if (v && !profile.altFoods?.includes(v)) {
     if (!profile.altFoods) profile.altFoods = []
     profile.altFoods.push(v)
     altInput.value = ''
-    saveProfile()
+    await saveProfileHandler()
   }
 }
 
@@ -295,16 +334,28 @@ const onClearAll = () => {
   }
 }
 
+const onLogout = () => {
+  if (confirm('确定退出登录？本地数据不会丢失。')) {
+    auth.logout()
+    router.push('/draw')
+  }
+}
+
 // 列表弹窗
-const openList = (type) => {
-  const map = { warn: { title: '⚠️ 避雷清单', filter: r => r.isWarning }, fav: { title: '⭐ 收藏清单', filter: r => r.isFavorite } }
-  const c = map[type]
-  listModal.title = c.title
-  listModal.items = recordState.list.filter(c.filter)
+const openList = async (type) => {
+  if (type === 'warn') {
+    listModal.title = '⚠️ 避雷清单'
+    listModal.items = auth.isLoggedIn ? (await loadWarnings()) : recordState.list.filter(r => r.isWarning)
+  } else {
+    listModal.title = '⭐ 收藏清单'
+    listModal.items = auth.isLoggedIn ? (await loadFavorites()) : recordState.list.filter(r => r.isFavorite)
+  }
   listModal.show = true
 }
 
 // 初始应用主题
-import { onMounted } from 'vue'
-onMounted(() => applyTheme(profile.theme || 'light'))
+onMounted(() => {
+  applyTheme(profile.theme || 'light')
+  updateStats()
+})
 </script>

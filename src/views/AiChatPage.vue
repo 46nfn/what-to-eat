@@ -3,7 +3,9 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h1 class="text-xl font-bold text-warm-700 dark:text-warm-100">🤖 天帮我选</h1>
-        <p class="text-xs text-warm-500">{{ meal.emoji }} {{ meal.label }} · AI美食对话</p>
+        <p class="text-xs text-warm-500">{{ meal.emoji }} {{ meal.label }} · AI美食对话
+          <span v-if="auth.isLoggedIn" class="text-wheat-500"> · {{ auth.state.user?.nickname || '' }}</span>
+        </p>
       </div>
       <div class="flex gap-2">
         <button class="btn-ghost text-xs" @click="onNewChat">+ 新对话</button>
@@ -22,6 +24,10 @@
         <div class="bg-warm-50 dark:bg-warm-700 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed max-w-[85%]">
           <p>嗨！我是你的专属美食助手～</p>
           <p class="mt-2">告诉我你的需求，比如「推荐午餐」「想吃辣的」「减脂餐推荐」「50元以内外卖」，我会结合你的饮食记录给你最好的建议！</p>
+          <p v-if="auth.isLoggedIn && (profile.tastePrefs?.length || profile.allergies?.length)" class="mt-2 text-xs text-wheat-500">
+            👤 已知你的偏好：<span v-if="profile.tastePrefs?.length">爱{{ profile.tastePrefs.join('、') }}</span>
+            <span v-if="profile.allergies?.length"> · 忌{{ profile.allergies.join('、') }}</span>
+          </p>
         </div>
       </div>
 
@@ -86,10 +92,14 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import { getMealType, fmtDate } from '@/utils/helpers.js'
 import { useChat } from '@/stores/useChat.js'
+import { useAuth } from '@/stores/useAuth.js'
+import { useProfile } from '@/stores/useProfile.js'
 import { sendToAI } from '@/utils/deepseekService.js'
-import { getRecords, getProfile } from '@/utils/storage.js'
+import { getRecords } from '@/utils/storage.js'
 import Toast from '@/components/Toast.vue'
 
+const auth = useAuth()
+const { state: profile } = useProfile()
 const meal = computed(() => getMealType())
 const { state: chatState, activeSession, addMsg, switchSession, newSession } = useChat()
 
@@ -114,11 +124,16 @@ const send = (text) => {
   scrollBottom()
   sending.value = true
 
-  // 构建历史
   const s = activeSession()
   const history = (s?.msgs || []).map(m => ({ role: m.role, content: m.content }))
 
-  const profile = getProfile()
+  // 使用 auth-aware profile（云端同步的偏好）
+  const userProfile = auth.isLoggedIn ? {
+    tastePrefs: profile.tastePrefs || [],
+    allergies: profile.allergies || [],
+    budgetRange: profile.budgetRange || [20, 50],
+  } : getRecords() // fallback
+
   sendToAI(msg, history, profile.aiApiKey || '').then(res => {
     addMsg('assistant', res.text, res.mealPlans)
     sending.value = false
