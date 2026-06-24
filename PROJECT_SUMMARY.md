@@ -112,20 +112,35 @@ Claude Code 调用 DeepSeek 接口执行代码
 | **联调修复** | 代理配置、401 鉴权、isPublic 入库、路径补 /api、社区搜索 undefined bug、他人帖子 404、price DECIMAL 溢出 | Claude Code 排查修复 |
 | **部署上线** | 阿里云服务器、MariaDB、Nginx、systemd 进程守护 | Claude Code 指导配通 |
 
-### 踩过的坑
+### 前端踩过的坑
 
-| 坑 | 原因 | 解决 |
-|----|------|------|
-| `/api/api/` 路径 404 | baseURL 和 endpoint 都写了 /api | baseURL 清空 |
-| `/diary/1` 404 | 没加 /api 前缀，Vite 代理不拦截 | 全局补 /api 前缀 |
-| StarRating `model` 未定义 | prop 名 `modelValue`，模板写成 `model` | 改为 modelValue |
-| 勾选公开但社区查不到 | `{...reactive}` 代理，`URLSearchParams(undefined)` 变 `"undefined"` | 手动构造对象，过滤空参数 |
-| 别人帖子点进去 404 | `GET /api/diary/:id` 校验 `user_id` | 改为自己的记录或公开的都放行 |
-| 注册 500 崩 | db.js 加了 SSL，MariaDB 本地不支持 | 移除 SSL 配置 |
-| 提交日记 `price` 溢出 | `DECIMAL(10,2)` + NaN/sci-notation | 前后端 safeNum 防御 |
-| 部署后前端 405/JS 加载失败 | `git pull` 覆盖修复 + dist 没重建 + Nginx 缺 mime.types | 修完就推 GitHub，pull 后 rebuild |
+| 问题 | 表现 | 原因 | 修复 |
+|------|------|------|------|
+| **StarRating 控制台报 `model` 未定义** | 选中评分没反应，控制台黄色警告 | prop 名叫 `modelValue`，模板里写成了 `model` | 模板统一改为 `modelValue` |
+| **日记请求 `/diary/1` 404** | 日记详情、编辑、删除全崩 | 请求路径少了 `/api` 前缀，Vite/Nginx 代理只拦 `/api/*` | `useRecords.js` 6 处全部补 `/api` 前缀 |
+| **社区广场空荡荡** | 明明有公开日记但列表空的，搜索才有结果 | `URLSearchParams` 把 `undefined` 序列化成字符串 `"undefined"`，后端 LIKE 匹配啥也搜不到 | `api/index.js` 全局过滤 `undefined/null` 参数 |
+| **勾选"公开分享"不生效** | 社区查不到自己刚发的日记 | `{...form}` 展开 Vue reactive 代理，checkbox 值被吞掉或变字符串 | `RecordPage.vue` 手动逐字段构造 + `!!` 显式布尔转换 |
+| **别人帖子点进去"记录不存在"** | 社区广场能列出来但点进去 404 | 后端 `GET /api/diary/:id` 校验了 `user_id`，不是自己发的就拒绝 | 改为：自己的记录 OR 公开记录都放行，返回 `isOwner` 前端据此隐藏编辑按钮 |
+| **`/api/api/` 路径重复** | 注册登录 404 | `baseURL='/api'` + `endpoint='/api/auth'` = `/api/api/auth` | baseURL 清空为空字符串 |
+| **注册/登录成功但没 token** | 注册完又退回登录页，日记存不了 | `useAuth.js` 的 `saveAuth()` 没校验 `data.token` 是否存在就写入 | 加 token 为空拒绝 + 存储后同步验证 + try-catch 兜底 |
+| **提交日记 `price` 字段 500** | 创建日记失败 | 用户空输入或粘贴超大数字，`DECIMAL(10,2)` 溢出 | 前后端各加 `safeNum(v, max)` 防御 |
+| **上线后浏览器 JS 报 `MIME type text/plain`** | 页面白屏，控制台红色报模块加载失败 | Nginx 主配置漏了 `include mime.types`，`.js` 文件被当文本返回 | 补 `include /etc/nginx/mime.types` |
+| **上线后"应用未能加载，请本地 npm run dev"** | 浏览器显示开发提示页面 | `.env.production` 里 `VITE_API_BASE=__FLY_IO_URL__` 是占位符，请求全打到假地址 | 清空为 `VITE_API_BASE=`，走相对路径 |
+| **创建日记 `POST /diary` 405** | 网络面板红色 405 | dist/ 是旧的，没重建，还是老代码的 `/diary` 路径 | `git pull` 拉新代码后必须 `npm run build` 重建前端 |
 
-### 后端崩溃排查速查表
+### 前端崩了速查
+
+> 原则：**前端问题 90% 是 dist 没重建**，先跑 `npm run build` 再看。
+
+| 现象 | 最可能原因 | 修复 |
+|------|-----------|------|
+| 页面白屏，控制台 `MIME type text/plain` | Nginx 缺 mime.types | `grep 'mime.types' /etc/nginx/nginx.conf`，没有就补 |
+| "应用未能加载，请本地 npm run dev" | `VITE_API_BASE` 填了假地址 | `grep VITE_API_BASE .env.production`，应为空 |
+| 接口 405 Method Not Allowed | dist 是旧代码，路径没 `/api` 前缀 | `git pull && npm run build` |
+| 某功能改了但线上没反应 | 浏览器缓存了旧 JS | `Ctrl+Shift+R` 强制刷新 |
+| 社区广场空的 | 确认有 `is_public=1` 数据 + 前端参数不传 `undefined` | 已修，`git pull` 即可 |
+
+### 后端崩了速查
 
 > 线上后端本身是稳定的（systemd 守护 + 崩溃自重启），以下为部署期间遇到的踩坑记录，以后再蹦直接查这个表。
 
