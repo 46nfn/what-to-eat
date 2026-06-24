@@ -18,15 +18,20 @@
         </router-link>
       </div>
 
-      <!-- 移动端导航 -->
-      <div class="flex sm:hidden items-center gap-0.5 overflow-x-auto scrollbar-none">
-        <router-link v-for="item in navItems" :key="item.to" :to="item.to"
-          class="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 no-underline flex-shrink-0"
-          :class="isActive(item.to)
-            ? 'bg-wheat-200 text-wheat-700 dark:bg-wheat-800 dark:text-wheat-300'
-            : 'text-warm-500'">
-          {{ item.icon }} {{ item.short }}
-        </router-link>
+      <!-- 移动端（仅 logo + 头像，导航见底部栏） -->
+      <div class="flex sm:hidden items-center gap-2">
+        <template v-if="auth.isLoggedIn">
+          <router-link to="/profile"
+            class="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex-shrink-0 no-underline"
+            :class="isActive('/profile')
+              ? 'bg-wheat-200 text-wheat-700 dark:bg-wheat-800 dark:text-wheat-300'
+              : 'text-warm-500'">
+            {{ auth.state.user?.avatar || '👤' }}
+          </router-link>
+        </template>
+        <template v-else>
+          <button class="btn-main text-xs px-3 py-1.5 flex-shrink-0" @click="showLoginModal = true">登录</button>
+        </template>
       </div>
 
       <!-- 个人中心入口 / 登录按钮 -->

@@ -8,6 +8,8 @@
           <component :is="Component" :key="route.path" />
         </transition>
       </router-view>
+      <!-- 移动端底部导航栏 -->
+      <BottomNav />
       <!-- PWA 安装与更新提示 -->
       <PwaInstallPrompt />
     </template>
@@ -24,6 +26,7 @@
 
 <script setup>
 import TopNav from '@/components/TopNav.vue'
+import BottomNav from '@/components/BottomNav.vue'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
 import { onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'

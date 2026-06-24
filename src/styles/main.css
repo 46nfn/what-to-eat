@@ -99,6 +99,11 @@
   }
 }
 
+/* === 底部安全区（iPhone 刘海屏适配）=== */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* === 瀑布流 === */
 .masonry {
   column-count: 2;
