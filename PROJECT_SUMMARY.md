@@ -125,6 +125,20 @@ Claude Code 调用 DeepSeek 接口执行代码
 | 提交日记 `price` 溢出 | `DECIMAL(10,2)` + NaN/sci-notation | 前后端 safeNum 防御 |
 | 部署后前端 405/JS 加载失败 | `git pull` 覆盖修复 + dist 没重建 + Nginx 缺 mime.types | 修完就推 GitHub，pull 后 rebuild |
 
+### 后端崩溃排查速查表
+
+> 线上后端本身是稳定的（systemd 守护 + 崩溃自重启），以下为部署期间遇到的踩坑记录，以后再蹦直接查这个表。
+
+| 报错关键字 | 原因 | 修复命令 |
+|-----------|------|---------|
+| `HANDSHAKE_NO_SSL_SUPPORT` | db.js 配了 SSL，MariaDB 本地不支持 | 确保 `db.js` 没有 `ssl:` 那行；已推 GitHub 修了，`git pull` 不会再覆盖 |
+| `EADDRINUSE :::3001` | 旧 node 进程残留占端口 | `systemctl stop what-to-eat; kill $(lsof -t -i:3001) 2>/dev/null; systemctl start what-to-eat` |
+| git pull 卡住不动 | `.env` 冲突（本地和仓库都有） | `git fetch origin master && git reset --hard origin/master` |
+| `MODULE_NOT_FOUND mysql2/promise` | `npm install` 没跑 | `cd /opt/what-to-eat/server && npm install` |
+| env 变量丢失 | 连接断开后没 `tee .env` 重写 | `tee /opt/what-to-eat/server/.env` 粘 10 行进去，按 Ctrl+D |
+
+**核心原则：** 代码 bug 修完后第一时间推到 GitHub，别再手改服务器文件。`git reset --hard` 拉最新代码 + `npm run build` 重建前端 + `systemctl restart what-to-eat` 重启后端，三步走。
+
 ---
 
 ## 四、部署上线
@@ -152,6 +166,27 @@ Claude Code 调用 DeepSeek 接口执行代码
 | 8 | 加 mime.types 让 JS 正常加载 |
 | 9 | npm run build 构建前端 |
 | 10 | 浏览器能开 → 能用 |
+
+### 日常维护命令速查
+
+```bash
+# 后端挂了？
+systemctl restart what-to-eat
+
+# 后端活着没？
+curl http://localhost:3001/api/health
+
+# 看报错
+journalctl -u what-to-eat -n 10 --no-pager
+
+# 前端改了什么需要生效？
+cd /opt/what-to-eat && git pull && npm run build
+
+# 三大服务状态全查
+systemctl status mariadb nginx what-to-eat
+```
+
+### 更新代码（以后用这个）
 
 ### 以后更新代码
 
